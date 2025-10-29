@@ -166,16 +166,12 @@ export function RoomCreation({ onConnect }: RoomCreationProps) {
                 <label className="block text-xs sm:text-sm font-semibold text-blue-200 mb-2 drop-shadow-sm flex items-center gap-2">
                   <span>📚</span> Topic
                 </label>
-                <select
+                <Input
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="w-full p-3 bg-gradient-to-r from-white/20 to-white/15 backdrop-blur-md border border-white/30 text-white rounded-xl shadow-lg focus:border-cyan-400/50 transition-all duration-300"
-                  aria-label="Select quiz topic"
-                >
-                  <option value="Science">🔬 Science</option>
-                  <option value="History">📚 History</option>
-                  <option value="Geography">🌍 Geography</option>
-                </select>
+                  placeholder="Enter any topic (e.g., Science, History, Space, AI...)"
+                  className="bg-gradient-to-r from-white/20 to-white/15 backdrop-blur-md border border-white/30 text-white placeholder:text-blue-200 rounded-xl text-sm sm:text-base shadow-lg focus:shadow-cyan-500/30 focus:border-cyan-400/50 transition-all duration-300"
+                />
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-blue-200 mb-2 drop-shadow-sm flex items-center gap-2">

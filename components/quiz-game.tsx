@@ -50,12 +50,30 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
     }
   }, [allPlayersAnswered, showAnswerModal, room.players])
 
+  // Timer countdown
+  useEffect(() => {
+    if (!hasAnswered && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            setShowAnswerModal(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }
+  }, [hasAnswered, timeLeft])
+
   // Reset states when new question starts
   useEffect(() => {
     setShowAnswerModal(false)
     setShowLeaderboard(false)
     setSelectedAnswer(null)
     setPlayerAnswers({})
+    setTimeLeft(30)
   }, [room.currentQuestion])
 
   const handleSelectAnswer = (index: number) => {
@@ -95,8 +113,7 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
           <Card className="p-4 sm:p-8 bg-gradient-to-br from-slate-900/90 to-slate-800/70 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-purple-500/20">
             <h2 className="text-2xl sm:text-4xl font-bold text-gray-100 mb-4 sm:mb-8 text-center drop-shadow-lg">Leaderboard</h2>
             <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-8">
-              {room.players
-                .map((p: any) => ({ ...p, score: scores[p.id] || 0 }))
+              {[...room.players]
                 .sort((a: any, b: any) => b.score - a.score)
                 .map((player: any, index: number) => (
                   <div
@@ -184,15 +201,15 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
                       : "border-slate-500/40 bg-slate-700/40 text-gray-100 hover:border-cyan-400/60 hover:bg-slate-700/50 drop-shadow-sm"
                   } ${hasAnswered ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:scale-105"}`}
                 >
-                  <div className="flex items-center">
+                  <div className="flex items-start">
                     <div
-                      className={`w-5 sm:w-6 h-5 sm:h-6 rounded-full border-2 mr-2 sm:mr-3 flex items-center justify-center transition-all flex-shrink-0 ${
+                      className={`w-5 sm:w-6 h-5 sm:h-6 rounded-full border-2 mr-2 sm:mr-3 mt-0.5 flex items-center justify-center transition-all flex-shrink-0 ${
                         selectedAnswer === index ? "border-blue-300 bg-blue-400" : "border-white border-opacity-40"
                       }`}
                     >
                       {selectedAnswer === index && <div className="w-2 h-2 bg-white rounded-full"></div>}
                     </div>
-                    <span className="truncate">{option}</span>
+                    <span className="leading-relaxed break-words hyphens-auto">{option}</span>
                   </div>
                 </button>
               ))}
@@ -219,8 +236,7 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
           <Card className="lg:col-span-1 p-4 sm:p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl">
             <h2 className="text-lg sm:text-xl font-bold text-gray-100 mb-3 sm:mb-4 drop-shadow-lg">Leaderboard</h2>
             <div className="space-y-1 sm:space-y-2">
-              {room.players
-                .map((p: any) => ({ ...p, score: scores[p.id] || 0 }))
+              {[...room.players]
                 .sort((a: any, b: any) => b.score - a.score)
                 .map((player: any, index: number) => (
                   <div
@@ -286,9 +302,9 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
                               : "border-slate-500/40 bg-slate-700/50 text-gray-200 drop-shadow-sm"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-100 truncate drop-shadow-sm">{option}</span>
-                          <span className="text-sm sm:text-lg ml-2 flex-shrink-0 drop-shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-100 break-words hyphens-auto drop-shadow-sm flex-1 pr-2">{option}</span>
+                          <span className="text-sm sm:text-lg flex-shrink-0 drop-shadow-sm">
                             {isCorrect && "✓ Correct"}
                             {playerSelected && !isCorrect && "✗ Your Answer"}
                           </span>
