@@ -1,65 +1,41 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { RoomCreation } from "@/components/room-creation"
-import { RoomLobby } from "@/components/room-lobby"
-import { QuizGame } from "@/components/quiz-game"
-import { FinalResults } from "@/components/final-results"
+import Link from "next/link"
+import { useEffect } from "react"
 import { useSocket } from "@/hooks/use-socket"
 
-type GameState = "home" | "lobby" | "quiz" | "results"
-
 export default function Home() {
-  const { room, currentPlayerId, isConnected, connect, disconnect } = useSocket()
-  const [gameState, setGameState] = useState<GameState>("home")
+  const { isConnected, connect } = useSocket()
 
   useEffect(() => {
-    if (isConnected && room) {
-      switch (room.status) {
-        case "waiting":
-          setGameState("lobby")
-          break
-        case "quiz":
-          setGameState("quiz")
-          break
-        case "finished":
-          setGameState("results")
-          break
-      }
-    } else {
-      setGameState("home")
-    }
-  }, [room, isConnected])
-
-  const handlePlayAgain = () => {
-    disconnect()
-    setGameState("home")
-  }
-
-  if (!isConnected && gameState !== "home") {
-    connect()
-  }
+    if (!isConnected) connect()
+  }, [isConnected, connect])
 
   return (
     <main className="min-h-screen bg-transparent">
-      {gameState === "home" && (
-        <RoomCreation
-          onConnect={() => connect()}
-        />
-      )}
-      {gameState === "lobby" && room && currentPlayerId && (
-        <RoomLobby
-          room={room}
-          currentPlayerId={currentPlayerId}
-        />
-      )}
-      {gameState === "quiz" && room && currentPlayerId && (
-        <QuizGame
-          room={room}
-          currentPlayerId={currentPlayerId}
-        />
-      )}
-      {gameState === "results" && room && <FinalResults room={room} onPlayAgain={handlePlayAgain} />}
+      <section className="max-w-2xl mx-auto py-16 px-6">
+        <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">QuizMaster</h1>
+        <p className="text-cyan-200 mb-10">Multiplayer Quiz Battle</p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            href="/create-room"
+            className="block text-center rounded-2xl p-6 bg-gradient-to-r from-blue-500/80 via-cyan-500/80 to-purple-500/80 border border-white/20 text-white font-semibold hover:opacity-95"
+          >
+            ✨ Create Room
+          </Link>
+          <Link
+            href="/join-room"
+            className="block text-center rounded-2xl p-6 bg-gradient-to-r from-indigo-500/80 via-purple-500/80 to-pink-500/80 border border-white/20 text-white font-semibold hover:opacity-95"
+          >
+            🎯 Join Room
+          </Link>
+        </div>
+
+        <div className="mt-8 text-cyan-300 text-sm">
+          Or open an existing quiz directly: <code className="text-cyan-200">/quiz/ROOMCODE</code>
+        </div>
+      </section>
     </main>
   )
 }

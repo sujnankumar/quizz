@@ -49,6 +49,14 @@ interface SocketContextType {
   startQuiz: () => void;
   selectAnswer: (answer: number, timeRemaining: number) => void;
   nextQuestion: () => void;
+  rejoinRoom: (roomCode: string, playerName?: string) => void;
+
+  // New controls for lobby and end-of-game
+  isGenerating: boolean;
+  updateSettings: (payload: { topic?: string; difficulty?: string; questionCount?: number; questionTime?: number }) => void;
+  generateQuestions: () => void;
+  playAgain: () => void;
+  leaveRoom: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -67,10 +75,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [playerSubmissions, setPlayerSubmissions] = useState<string[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const isConnectedRef = useRef(false);
   const socketRef = useRef<Socket | null>(null);
   const connectingRef = useRef(false);
+  const clientIdRef = useRef<string | null>(null);
 
   const connect = () => {
     // Prevent parallel connection attempts and duplicate sockets
@@ -117,6 +127,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     });
 
     newSocket.on('roomUpdated', (updatedRoom: Room) => {
+      setRoom(updatedRoom);
+    });
+
+    // Question generation lifecycle
+    newSocket.on('generatingQuestions', () => {
+      setIsGenerating(true);
+    });
+
+    newSocket.on('questionsGenerated', (updatedRoom: Room) => {
+      setIsGenerating(false);
       setRoom(updatedRoom);
     });
 
@@ -167,27 +187,56 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setRoom(null);
       setCurrentPlayerId(null);
       setPlayerSubmissions([]);
+      setIsGenerating(false);
     }
+  };
+
+  // Attempt rejoin helper
+  const rejoinRoom = (roomCode: string, playerName?: string) => {
+    if (!socketRef.current || !clientIdRef.current) return;
+    socketRef.current.emit('rejoinRoom', {
+      roomCode,
+      clientId: clientIdRef.current,
+      playerName,
+    });
   };
 
   const clearSubmissions = () => {
     setPlayerSubmissions([]);
   };
 
-  const createRoom = (playerName: string, topic: string, difficulty: string, questionCount: number): Promise<{room: Room, playerId: string}> => {
+  const createRoom = (playerName: string, topic: string, difficulty: string, questionCount: number): Promise<{room: Room, playerId: string, clientId?: string}> => {
     if (!socketRef.current) {
       throw new Error('Socket not connected');
     }
 
     return new Promise((resolve, reject) => {
+      // ensure clientId exists
+      if (!clientIdRef.current) {
+        const existing = typeof window !== 'undefined' ? localStorage.getItem('clientId') : null;
+        clientIdRef.current = existing || `cid_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+        if (typeof window !== 'undefined') localStorage.setItem('clientId', clientIdRef.current);
+      }
+
       socketRef.current!.emit('createRoom', {
         playerName,
         topic: topic.toLowerCase(),
         difficulty,
-        questionCount
+        questionCount,
+        clientId: clientIdRef.current
       });
 
-      socketRef.current!.once('roomCreated', (data: { room: Room; playerId: string }) => {
+      socketRef.current!.once('roomCreated', (data: { room: Room; playerId: string; clientId?: string }) => {
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('roomCode', data.room.code);
+            localStorage.setItem('playerName', playerName);
+            if (data.clientId) {
+              clientIdRef.current = data.clientId;
+              localStorage.setItem('clientId', data.clientId);
+            }
+          }
+        } catch {}
         resolve(data);
       });
 
@@ -197,12 +246,45 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const joinRoom = (roomCode: string, playerName: string) => {
+  const joinRoom = (roomCode: string, playerName: string): Promise<{room: Room, playerId: string}> => {
     if (!socketRef.current) {
       throw new Error('Socket not connected');
     }
 
-    socketRef.current.emit('joinRoom', { roomCode, playerName });
+    return new Promise((resolve, reject) => {
+      // ensure clientId exists
+      if (!clientIdRef.current) {
+        const existing = typeof window !== 'undefined' ? localStorage.getItem('clientId') : null;
+        clientIdRef.current = existing || `cid_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+        if (typeof window !== 'undefined') localStorage.setItem('clientId', clientIdRef.current);
+      }
+
+      socketRef.current!.emit('joinRoom', { roomCode, playerName, clientId: clientIdRef.current });
+
+      const onJoined = (data: { room: Room; playerId: string }) => {
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('roomCode', data.room.code);
+            localStorage.setItem('playerName', playerName);
+          }
+        } catch {}
+        cleanup();
+        resolve(data);
+      };
+
+      const onError = (error: any) => {
+        cleanup();
+        reject(error);
+      };
+
+      const cleanup = () => {
+        socketRef.current?.off('roomJoined', onJoined);
+        socketRef.current?.off('error', onError);
+      };
+
+      socketRef.current!.once('roomJoined', onJoined);
+      socketRef.current!.once('error', onError);
+    });
   };
 
   const startQuiz = () => {
@@ -219,6 +301,52 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     if (!socketRef.current) return;
     socketRef.current.emit('nextQuestion');
   };
+
+  // Lobby settings update (admin only, while waiting)
+  const updateSettings = (payload: { topic?: string; difficulty?: string; questionCount?: number; questionTime?: number }) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit('updateSettings', payload || {});
+  };
+
+  // Generate questions (admin only)
+  const generateQuestions = () => {
+    if (!socketRef.current) return;
+    setIsGenerating(true);
+    socketRef.current.emit('generateQuestions');
+  };
+
+  // Reset same room to lobby
+  const playAgain = () => {
+    if (!socketRef.current) return;
+    socketRef.current.emit('playAgain');
+  };
+
+  // Leave current room
+  const leaveRoom = () => {
+    if (!socketRef.current) return;
+    socketRef.current.emit('leaveRoom');
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('roomCode');
+      }
+    } catch {}
+  };
+
+  // Initialize stable clientId on first load
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const existing = localStorage.getItem('clientId');
+        if (existing) {
+          clientIdRef.current = existing;
+        } else {
+          const generated = `cid_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+          clientIdRef.current = generated;
+          localStorage.setItem('clientId', generated);
+        }
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -240,6 +368,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     startQuiz,
     selectAnswer,
     nextQuestion,
+    rejoinRoom,
+
+    // New API
+    isGenerating,
+    updateSettings,
+    generateQuestions,
+    playAgain,
+    leaveRoom,
   };
 
   return (

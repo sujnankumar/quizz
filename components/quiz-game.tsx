@@ -13,7 +13,7 @@ interface QuizGameProps {
 export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
   const { selectAnswer, nextQuestion, playerSubmissions, clearSubmissions } = useSocket()
   const isAdmin = currentPlayerId === room.adminId
-  const [timeLeft, setTimeLeft] = useState(30)
+  const [timeLeft, setTimeLeft] = useState(room.questionTime || 30)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showAnswerModal, setShowAnswerModal] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
@@ -34,7 +34,8 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
     if (!isCorrect) return 0
 
     const basePoints = 10
-    const timeBonus = Math.floor(((30 - timeTaken) / 30) * 10)
+    const maxT = Number(room.questionTime || 30)
+    const timeBonus = Math.floor(((maxT - timeTaken) / maxT) * 10)
     return Math.max(basePoints + timeBonus, basePoints)
   }
 
@@ -54,7 +55,7 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
   useEffect(() => {
     if (!hasAnswered && timeLeft > 0) {
       const timer = setInterval(() => {
-        setTimeLeft((prev) => {
+        setTimeLeft((prev: number) => {
           if (prev <= 1) {
             setShowAnswerModal(true)
             return 0
@@ -73,7 +74,7 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
     setShowLeaderboard(false)
     setSelectedAnswer(null)
     setPlayerAnswers({})
-    setTimeLeft(30)
+    setTimeLeft(room.questionTime || 30)
   }, [room.currentQuestion])
 
   const handleSelectAnswer = (index: number) => {
@@ -84,11 +85,13 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
   const handleSubmitAnswer = () => {
     if (selectedAnswer === null) return
     const timeAtSubmit = timeLeft
-    const pointsEarned = calculateQuestionPoints(selectedAnswer, 30 - timeAtSubmit)
+    const maxT = Number(room.questionTime || 30)
+    const pointsEarned = calculateQuestionPoints(selectedAnswer, maxT - timeAtSubmit)
 
-    setCurrentQuestionTime(30 - timeAtSubmit)
+    setCurrentQuestionTime(maxT - timeAtSubmit)
     setCurrentQuestionPoints(pointsEarned)
 
+    // send remaining time to server (it calculates using room.questionTime)
     selectAnswer(selectedAnswer, timeAtSubmit)
   }
 
@@ -183,7 +186,7 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
               <div className="w-full bg-slate-700/60 rounded-full h-2 overflow-hidden backdrop-blur-sm">
                 <div
                   className="bg-gradient-to-r from-blue-400 to-cyan-400 h-2 rounded-full transition-all shadow-inner"
-                  style={{ width: `${(timeLeft / 30) * 100}%` }}
+                  style={{ width: `${(timeLeft / (room.questionTime || 30)) * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -254,11 +257,18 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
             <h2 className="text-lg sm:text-xl font-bold text-gray-100 mb-3 sm:mb-4 drop-shadow-lg">Leaderboard</h2>
             <div className="space-y-1 sm:space-y-2">
               {[...room.players]
-                .sort((a: any, b: any) => b.score - a.score)
+                .sort((a: any, b: any) => {
+                  const showActual = showAnswerModal || room.players.every((p: any) => p.answered);
+                  const aPrev = Math.max(0, (a.score || 0) - (a.roundPoints || 0));
+                  const bPrev = Math.max(0, (b.score || 0) - (b.roundPoints || 0));
+                  const aScoreForSort = showActual ? (a.score || 0) : aPrev;
+                  const bScoreForSort = showActual ? (b.score || 0) : bPrev;
+                  return bScoreForSort - aScoreForSort;
+                })
                 .map((player: any, index: number) => {
-                  // Show actual scores only after all submit or timer ends, otherwise show 0
-                  const showActualScore = showAnswerModal || room.players.every((p: any) => p.answered);
-                  const displayScore = showActualScore ? player.score : 0;
+                  const showActual = showAnswerModal || room.players.every((p: any) => p.answered);
+                  const prevScore = Math.max(0, (player.score || 0) - (player.roundPoints || 0));
+                  const displayScore = showActual ? player.score : prevScore;
 
                   return (
                     <div
@@ -276,7 +286,7 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
                         <span className="text-gray-100 font-medium truncate drop-shadow-sm">{player.name}</span>
                       </div>
                       <span className="text-lg sm:text-xl font-bold text-cyan-300 flex-shrink-0 ml-2 drop-shadow-md">
-                        {!showActualScore ? "---" : displayScore}
+                        {displayScore}
                       </span>
                     </div>
                   );

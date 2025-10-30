@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useSocket } from "@/hooks/use-socket"
+import { useRouter } from "next/navigation"
 
 interface RoomCreationProps {
   onConnect?: () => void
+  initialMode?: "create" | "join"
 }
 
-export function RoomCreation({ onConnect }: RoomCreationProps) {
+export function RoomCreation({ onConnect, initialMode }: RoomCreationProps) {
+  const router = useRouter()
   const { createRoom, joinRoom, connect, isConnected } = useSocket()
-  const [mode, setMode] = useState<"home" | "create" | "join">("home")
+  const [mode, setMode] = useState<"home" | "create" | "join">(initialMode ?? "home")
   const [playerName, setPlayerName] = useState("")
   const [roomCode, setRoomCode] = useState("")
   const [topic, setTopic] = useState<string>("Science")
@@ -31,22 +34,28 @@ export function RoomCreation({ onConnect }: RoomCreationProps) {
 
     setLoading(true)
     try {
-      await createRoom(playerName, topic, difficulty, questionCount)
+      const data = await createRoom(playerName, topic, difficulty, questionCount)
       onConnect?.()
+      // Navigate to quiz route with room code
+      router.push(`/quiz/${data.room.code}`)
     } catch (error) {
       console.error('Failed to create room:', error)
+    } finally {
       setLoading(false)
     }
   }
 
-  const handleJoinRoom = () => {
+  const handleJoinRoom = async () => {
     if (!playerName.trim() || !roomCode.trim() || loading) return
 
     setLoading(true)
     try {
-      joinRoom(roomCode.toUpperCase(), playerName)
+      await joinRoom(roomCode.toUpperCase(), playerName)
+      // Navigate to quiz route with room code
+      router.push(`/quiz/${roomCode.toUpperCase()}`)
     } catch (error) {
       console.error('Failed to join room:', error)
+    } finally {
       setLoading(false)
     }
   }

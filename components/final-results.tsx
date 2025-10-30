@@ -2,13 +2,16 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { useSocket } from "@/hooks/use-socket"
+import { useRouter } from "next/navigation"
 
 interface FinalResultsProps {
   room: any
-  onPlayAgain: () => void
 }
 
-export function FinalResults({ room, onPlayAgain }: FinalResultsProps) {
+export function FinalResults({ room }: FinalResultsProps) {
+  const { playAgain, leaveRoom } = useSocket()
+  const router = useRouter()
   const sortedPlayers = [...room.players].sort((a, b) => b.score - a.score)
   const topThree = sortedPlayers.slice(0, 3)
 
@@ -73,12 +76,27 @@ export function FinalResults({ room, onPlayAgain }: FinalResultsProps) {
           </div>
         </Card>
 
-        <Button
-          onClick={onPlayAgain}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-4 sm:py-6 text-base sm:text-lg font-semibold shadow-lg rounded-xl"
-        >
-          🔄 Play Again
-        </Button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            onClick={() => {
+              playAgain()
+              // Stay on the same room route; page will switch back to lobby
+              router.push(`/quiz/${room.code}`)
+            }}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-4 sm:py-6 text-base sm:text-lg font-semibold shadow-lg rounded-xl"
+          >
+            🔄 Play Again
+          </Button>
+          <Button
+            onClick={() => {
+              leaveRoom()
+              router.push("/")
+            }}
+            className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white py-4 sm:py-6 text-base sm:text-lg font-semibold shadow-lg rounded-xl"
+          >
+            🚪 Exit
+          </Button>
+        </div>
       </div>
     </div>
   )
