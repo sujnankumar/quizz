@@ -21,6 +21,7 @@ export default function QuizRoomPage() {
     isConnected,
     connect,
     rejoinRoom,
+    personalLobby,
   } = useSocket()
 
   const [view, setView] = useState<ViewState>("loading")
@@ -37,8 +38,12 @@ export default function QuizRoomPage() {
   useEffect(() => {
     if (!isConnected || !roomCodeParam) return
 
-    // If already in the same room, decide state from room.status
+    // If already in the same room, decide state (personal lobby takes precedence)
     if (room && currentRoomCode === roomCodeParam) {
+      if (personalLobby) {
+        setView("lobby")
+        return
+      }
       switch (room.status) {
         case "waiting":
           setView("lobby")
@@ -64,12 +69,16 @@ export default function QuizRoomPage() {
     } catch {
       setView("error")
     }
-  }, [isConnected, roomCodeParam, room, currentRoomCode, rejoinRoom])
+  }, [isConnected, roomCodeParam, room, currentRoomCode, rejoinRoom, personalLobby])
 
   // When room updates, recalc view
   useEffect(() => {
     if (!room) return
     if ((room.code || "").toUpperCase() !== roomCodeParam) return
+    if (personalLobby) {
+      setView("lobby")
+      return
+    }
     switch (room.status) {
       case "waiting":
         setView("lobby")
@@ -83,7 +92,7 @@ export default function QuizRoomPage() {
       default:
         setView("loading")
     }
-  }, [room, roomCodeParam])
+  }, [room, roomCodeParam, personalLobby])
 
   const goHome = () => router.push("/")
 

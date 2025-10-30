@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useSocket } from "@/hooks/use-socket"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 interface QuizGameProps {
   room: any
@@ -21,6 +22,33 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
   const [playerAnswers, setPlayerAnswers] = useState<{ [key: string]: number | null }>({})
   const [currentQuestionPoints, setCurrentQuestionPoints] = useState(0)
   const [currentQuestionTime, setCurrentQuestionTime] = useState(0)
+
+  // Voters modal state
+  const [votersOpen, setVotersOpen] = useState(false)
+  const [votersOptionIndex, setVotersOptionIndex] = useState<number | null>(null)
+  const [votersNames, setVotersNames] = useState<string[]>([])
+
+  // Floating, non-intrusive submission logs
+  const [ephemeralLogs, setEphemeralLogs] = useState<{ id: number; name: string }[]>([])
+  const lastCountRef = useRef(0)
+
+  // Convert new entries from playerSubmissions into ephemeral logs that auto-vanish
+  useEffect(() => {
+    if (playerSubmissions.length > lastCountRef.current) {
+      const newNames = playerSubmissions.slice(lastCountRef.current)
+      newNames.forEach((name) => {
+        const id = Date.now() + Math.random()
+        setEphemeralLogs((prev) => [...prev, { id, name }])
+        setTimeout(() => {
+          setEphemeralLogs((prev) => prev.filter((l) => l.id !== id))
+        }, 2500)
+      })
+      lastCountRef.current = playerSubmissions.length
+    } else if (playerSubmissions.length === 0) {
+      // Reset counter when list is cleared for new question
+      lastCountRef.current = 0
+    }
+  }, [playerSubmissions])
 
   // Use server's currentQuestion instead of local state
   const currentQuestion = room.questions[room.currentQuestion] || room.questions[0]
@@ -168,6 +196,18 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
         <div className="absolute bottom-20 right-10 w-48 sm:w-72 h-48 sm:h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
       </div>
 
+      {/* Floating submission toasts - non-blocking UI */}
+      <div className="pointer-events-none fixed top-20 right-4 z-50 space-y-2">
+        {ephemeralLogs.map((log) => (
+          <div
+            key={log.id}
+            className="bg-slate-900/80 text-white px-3 py-2 rounded-lg border border-slate-600/50 shadow-lg shadow-cyan-500/20 text-sm"
+          >
+            ✅ <span className="text-yellow-300">{log.name}</span> submitted
+          </div>
+        ))}
+      </div>
+
       <div className="w-full max-w-5xl relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Question Card */}
@@ -218,22 +258,6 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
               ))}
             </div>
 
-            {/* Submission Log */}
-            {playerSubmissions.length > 0 && (
-              <div className="bg-gradient-to-r from-slate-800/40 to-slate-700/40 backdrop-blur-sm p-3 rounded-xl border border-slate-500/40 mb-4 shadow-inner">
-                <h4 className="text-sm text-cyan-300 font-semibold mb-2 drop-shadow-sm">Submissions</h4>
-                <div className="space-y-1 max-h-24 overflow-y-auto">
-                  {playerSubmissions.map((name, index) => (
-                    <div key={index} className="text-sm text-gray-100 drop-shadow-sm">
-                      ✅ <span className="text-yellow-300">{name}</span> submitted answer
-                    </div>
-                  ))}
-                </div>
-                <div className="text-xs text-cyan-200 mt-2 font-medium">
-                  {playerSubmissions.length}/{room.players.length} players submitted
-                </div>
-              </div>
-            )}
 
             {hasAnswered && !showAnswerModal && (
               <div className="text-center text-cyan-200 py-3 sm:py-4 bg-slate-700/50 backdrop-blur-sm rounded-xl border border-slate-500/40 font-medium drop-shadow-md shadow-inner">
@@ -323,6 +347,8 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
                     const isCorrect = index === currentQuestion.correctAnswer
                     const playerSelected = playerAnswers[currentPlayerId] === index
                     const playerCorrect = playerSelected && isCorrect
+                    const namesForOption = room.players.filter((p: any) => p.selectedAnswer === index).map((p: any) => p.name)
+                    const countForOption = namesForOption.length
 
                     return (
                       <div
@@ -335,17 +361,54 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
                               : "border-slate-500/40 bg-slate-700/50 text-gray-200 drop-shadow-sm"
                         }`}
                       >
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-start gap-2">
                           <span className="text-gray-100 break-words hyphens-auto drop-shadow-sm flex-1 pr-2">{option}</span>
-                          <span className="text-sm sm:text-lg flex-shrink-0 drop-shadow-sm">
-                            {isCorrect && "✓ Correct"}
-                            {playerSelected && !isCorrect && "✗ Your Answer"}
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-sm sm:text-lg drop-shadow-sm">
+                              {isCorrect && "✓ Correct"}
+                              {playerSelected && !isCorrect && "✗ Your Answer"}
+                            </span>
+                            {countForOption > 0 && (
+                              <button
+                                onClick={() => {
+                                  setVotersNames(namesForOption)
+                                  setVotersOptionIndex(index)
+                                  setVotersOpen(true)
+                                }}
+                                className="text-xs sm:text-sm px-2 py-1 rounded-full bg-slate-800/70 border border-slate-600/60 text-cyan-200 hover:bg-slate-700/70"
+                                aria-label={`Show voters for this option (${countForOption})`}
+                                title="Show voters"
+                              >
+                                {countForOption} chose
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
+
+                {/* Voters modal */}
+                <Dialog open={votersOpen} onOpenChange={setVotersOpen}>
+                  <DialogContent className="max-w-sm bg-slate-900/95 border border-slate-700/60">
+                    <DialogHeader>
+                      <DialogTitle className="text-gray-100">
+                        {typeof votersOptionIndex === "number"
+                          ? `Players who chose option ${String.fromCharCode(65 + votersOptionIndex)}`
+                          : "Players who chose this option"}
+                      </DialogTitle>
+                      <DialogDescription className="text-cyan-300">
+                        List of players who selected this answer.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-2 space-y-2">
+                      {votersNames.map((n, i) => (
+                        <div key={i} className="text-gray-100">{n}</div>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 

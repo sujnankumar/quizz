@@ -57,6 +57,7 @@ interface SocketContextType {
   generateQuestions: () => void;
   playAgain: () => void;
   leaveRoom: () => void;
+  personalLobby: boolean;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -76,6 +77,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [playerSubmissions, setPlayerSubmissions] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [personalLobby, setPersonalLobby] = useState(false);
 
   const isConnectedRef = useRef(false);
   const socketRef = useRef<Socket | null>(null);
@@ -140,6 +142,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setRoom(updatedRoom);
     });
 
+    // Personal play-again: only this client returns to lobby
+    newSocket.on('goToLobby', (updatedRoom: Room) => {
+      setRoom(updatedRoom);
+      setPlayerSubmissions([]);
+      setPersonalLobby(true);
+    });
+
     newSocket.on('playerSubmitted', (data: { playerId: string, playerName: string }) => {
       setPlayerSubmissions(prev => [...prev, data.playerName]);
     });
@@ -148,6 +157,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     newSocket.on('quizStarted', (updatedRoom: Room) => {
       setRoom(updatedRoom);
       setPlayerSubmissions([]); // Clear submissions when quiz starts
+      setPersonalLobby(false); // resume global flow
     });
 
     newSocket.on('questionUpdated', (updatedRoom: Room) => {
@@ -188,6 +198,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setCurrentPlayerId(null);
       setPlayerSubmissions([]);
       setIsGenerating(false);
+      setPersonalLobby(false);
     }
   };
 
@@ -376,6 +387,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     generateQuestions,
     playAgain,
     leaveRoom,
+    personalLobby,
   };
 
   return (

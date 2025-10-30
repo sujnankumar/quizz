@@ -18,9 +18,10 @@ export function RoomCreation({ onConnect, initialMode }: RoomCreationProps) {
   const [mode, setMode] = useState<"home" | "create" | "join">(initialMode ?? "home")
   const [playerName, setPlayerName] = useState("")
   const [roomCode, setRoomCode] = useState("")
-  const [topic, setTopic] = useState<string>("Science")
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium")
-  const [questionCount, setQuestionCount] = useState(5)
+  // Defaults moved to lobby settings; keep minimal create form here
+  const DEFAULT_TOPIC = "General Knowledge"
+  const DEFAULT_DIFFICULTY: "easy" | "medium" | "hard" = "medium"
+  const DEFAULT_QUESTION_COUNT = 5
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function RoomCreation({ onConnect, initialMode }: RoomCreationProps) {
 
     setLoading(true)
     try {
-      const data = await createRoom(playerName, topic, difficulty, questionCount)
+      const data = await createRoom(playerName, DEFAULT_TOPIC, DEFAULT_DIFFICULTY, DEFAULT_QUESTION_COUNT)
       onConnect?.()
       // Navigate to quiz route with room code
       router.push(`/quiz/${data.room.code}`)
@@ -169,45 +170,6 @@ export function RoomCreation({ onConnect, initialMode }: RoomCreationProps) {
                   onChange={(e) => setPlayerName(e.target.value)}
                   placeholder="Enter your name"
                   className="bg-gradient-to-r from-white/20 to-white/15 backdrop-blur-md border border-white/30 text-white placeholder:text-blue-200 rounded-xl text-sm sm:text-base shadow-lg focus:shadow-cyan-500/30 focus:border-cyan-400/50 transition-all duration-300"
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-blue-200 mb-2 drop-shadow-sm flex items-center gap-2">
-                  <span>📚</span> Topic
-                </label>
-                <Input
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="Enter any topic (e.g., Science, History, Space, AI...)"
-                  className="bg-gradient-to-r from-white/20 to-white/15 backdrop-blur-md border border-white/30 text-white placeholder:text-blue-200 rounded-xl text-sm sm:text-base shadow-lg focus:shadow-cyan-500/30 focus:border-cyan-400/50 transition-all duration-300"
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-blue-200 mb-2 drop-shadow-sm flex items-center gap-2">
-                  <span>⚡</span> Difficulty
-                </label>
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as "easy" | "medium" | "hard")}
-                  className="w-full p-3 bg-gradient-to-r from-white/20 to-white/15 backdrop-blur-md border border-white/30 text-white rounded-xl shadow-lg focus:border-cyan-400/50 transition-all duration-300"
-                  aria-label="Select difficulty level"
-                >
-                  <option value="easy">⭐ Easy</option>
-                  <option value="medium">⭐⭐ Medium</option>
-                  <option value="hard">⭐⭐⭐ Hard</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-blue-200 mb-2 drop-shadow-sm flex items-center gap-2">
-                  <span>🔢</span> Number of Questions
-                </label>
-                <Input
-                  type="number"
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  min="1"
-                  max="10"
-                  className="bg-gradient-to-r from-white/20 to-white/15 backdrop-blur-md border border-white/30 text-white text-center font-bold rounded-xl shadow-lg focus:border-cyan-400/50 transition-all duration-300"
                 />
               </div>
               <Button

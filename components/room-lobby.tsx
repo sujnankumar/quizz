@@ -4,6 +4,16 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useSocket } from "@/hooks/use-socket"
+import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog"
 
 interface RoomLobbyProps {
   room: any
@@ -11,8 +21,13 @@ interface RoomLobbyProps {
 }
 
 export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
-  const { startQuiz, updateSettings, generateQuestions, isGenerating, leaveRoom } = useSocket()
+  const { startQuiz, updateSettings, generateQuestions, isGenerating, leaveRoom, playAgain } = useSocket()
+  const router = useRouter()
   const isAdmin = currentPlayerId === room.adminId
+  const me = room.players.find((p: any) => p.id === currentPlayerId)
+  const readyCount = room.players.filter((p: any) => p.ready).length
+  const allReady = readyCount === room.players.length
+  const inRematch = !!room.rematch
 
   const handleStartQuiz = () => {
     startQuiz()
@@ -57,6 +72,11 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                   className="flex items-center justify-between p-2 sm:p-3 bg-slate-700/40 backdrop-blur-sm rounded-lg border border-slate-500/30 hover:bg-slate-700/60 transition-all duration-200"
                 >
                   <span className="text-gray-100 font-medium text-sm sm:text-base truncate drop-shadow-sm">{player.name}</span>
+                  {player.ready ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600/70 text-white ml-2">Ready</span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-600/70 text-white ml-2">Not ready</span>
+                  )}
                   {player.id === room.adminId && (
                     <span className="text-xs bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2 shadow-lg">
                       👑 Admin
@@ -88,89 +108,137 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
 
               {isAdmin ? (
                 <div className="space-y-3 sm:space-y-4">
-                  {/* Editable settings for admin */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Topic</p>
-                      <Input
-                        value={room.topic || ""}
-                        onChange={(e) => updateSettings({ topic: e.target.value })}
-                        placeholder="Enter topic"
-                        className="bg-slate-800/60 border border-slate-600/50 text-white"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Difficulty</p>
-                      <select
-                        aria-label="Select difficulty"
-                        title="Select difficulty"
-                        value={(room.difficulty || "medium").toLowerCase()}
-                        onChange={(e) => updateSettings({ difficulty: e.target.value as any })}
-                        className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        className="w-full bg-slate-800/60 hover:bg-slate-700/70 border border-slate-600/50 text-white"
+                        aria-label="Open quiz settings"
+                        title="Open quiz settings"
                       >
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                      </select>
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Questions</p>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={room.questionCount || 5}
-                        onChange={(e) => {
-                          const v = Math.max(1, Math.min(20, parseInt(e.target.value || "1")));
-                          updateSettings({ questionCount: v });
+                        ⚙️ Open Settings
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-xl bg-slate-900/95 border border-slate-700/60">
+                      <DialogHeader>
+                        <DialogTitle className="text-gray-100">Quiz Settings</DialogTitle>
+                        <DialogDescription className="text-cyan-300">
+                          Edit settings, generate questions, then start the quiz.
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <div>
+                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Topic</p>
+                          <Input
+                            value={room.topic || ""}
+                            onChange={(e) => updateSettings({ topic: e.target.value })}
+                            placeholder="Enter topic"
+                            className="bg-slate-800/60 border border-slate-600/50 text-white"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Difficulty</p>
+                          <select
+                            aria-label="Select difficulty"
+                            title="Select difficulty"
+                            value={(room.difficulty || "medium").toLowerCase()}
+                            onChange={(e) => updateSettings({ difficulty: e.target.value as any })}
+                            className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+                          >
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                          </select>
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Questions</p>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={room.questionCount || 5}
+                            onChange={(e) => {
+                              const v = Math.max(1, Math.min(20, parseInt(e.target.value || "1")));
+                              updateSettings({ questionCount: v });
+                            }}
+                            className="bg-slate-800/60 border border-slate-600/50 text-white"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Time per Question (sec)</p>
+                          <select
+                            aria-label="Select time per question"
+                            title="Select time per question"
+                            value={room.questionTime || 30}
+                            onChange={(e) => updateSettings({ questionTime: parseInt(e.target.value) })}
+                            className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+                          >
+                            <option value={10}>10</option>
+                            <option value={15}>15</option>
+                            <option value={20}>20</option>
+                            <option value={25}>25</option>
+                            <option value={30}>30</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-3">
+                        <Button
+                          onClick={generateQuestions}
+                          disabled={isGenerating}
+                          className="w-full sm:w-1/2 bg-gradient-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
+                        >
+                          {isGenerating ? "⏳ Generating..." : "🔁 Generate Questions"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Actions outside modal */}
+                  <div className="flex flex-col sm:flex-row gap-3 mt-3">
+                    {isAdmin && (
+                      <div className="w-full sm:w-1/2">
+                        <Button
+                          onClick={() => startQuiz()}
+                          className="w-full bg-gradient-to-r from-green-500/80 via-emerald-500/80 to-cyan-500/80 hover:from-green-600/90 hover:via-emerald-600/90 hover:to-cyan-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-green-500/30 disabled:opacity-60"
+                          disabled={!room.questionsReady || isGenerating || (room.rematch && !allReady)}
+                        >
+                          🚀 Start Quiz
+                        </Button>
+              </div>
+            )}
+                    <div className={`${isAdmin ? "w-full sm:w-1/2" : "w-full"}`}>
+                      <Button
+                        onClick={() => {
+                          leaveRoom()
+                          router.push("/")
                         }}
-                        className="bg-slate-800/60 border border-slate-600/50 text-white"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Time per Question (sec)</p>
-                      <select
-                        aria-label="Select time per question"
-                        title="Select time per question"
-                        value={room.questionTime || 30}
-                        onChange={(e) => updateSettings({ questionTime: parseInt(e.target.value) })}
-                        className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+                        className="w-full bg-gradient-to-r from-red-500/80 to-pink-600/80 hover:from-red-600/90 hover:to-pink-700/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg"
                       >
-                        <option value={10}>10</option>
-                        <option value={15}>15</option>
-                        <option value={20}>20</option>
-                        <option value={25}>25</option>
-                        <option value={30}>30</option>
-                      </select>
+                        🚪 Exit Room
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      onClick={generateQuestions}
-                      disabled={isGenerating}
-                      className="w-full sm:w-1/2 bg-gradient-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
-                    >
-                      {isGenerating ? "⏳ Generating..." : "🔁 Generate Questions"}
-                    </Button>
-                    <Button
-                      onClick={startQuiz}
-                      disabled={!room.questionsReady || isGenerating}
-                      className="w-full sm:w-1/2 bg-gradient-to-r from-green-500/80 via-emerald-500/80 to-cyan-500/80 hover:from-green-600/90 hover:via-emerald-600/90 hover:to-cyan-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-green-500/30 disabled:opacity-60"
-                    >
-                      🚀 Start Quiz
-                    </Button>
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs text-cyan-300">
-                    <span>Questions ready: {room.questionsReady ? "Yes" : "No"}</span>
-                    <button
-                      onClick={leaveRoom}
-                      className="text-red-300 hover:text-red-200 underline"
-                    >
-                      Exit Room
-                    </button>
-                  </div>
+                  {room.rematch && (
+                    <div className="mt-2">
+                      {me?.ready ? (
+                        <span className="text-xs text-green-300">✓ You are ready</span>
+                      ) : (
+                        <Button
+                          onClick={() => playAgain()}
+                          className="bg-blue-600/80 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-xs border border-white/20"
+                        >
+                          I'm Ready
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <div className="mt-1 text-xs text-cyan-300">
+                      {(room.questionsReady ? "Questions ready" : "Questions not ready")} · Ready {readyCount}/{room.players.length}{inRematch ? " (rematch)" : ""}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-cyan-200 text-sm font-medium">
