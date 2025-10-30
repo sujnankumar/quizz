@@ -66,31 +66,38 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   const isConnectedRef = useRef(false);
   const socketRef = useRef<Socket | null>(null);
+  const connectingRef = useRef(false);
 
   const connect = () => {
-    if (isConnectedRef.current) return;
+    // Prevent parallel connection attempts and duplicate sockets
+    if (isConnectedRef.current || connectingRef.current) return;
+    connectingRef.current = true;
 
     const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001', {
+      path: '/socket.io',
       autoConnect: true,
+      withCredentials: true,
       transports: ['polling', 'websocket'],
       upgrade: true,
       rememberUpgrade: true,
-      timeout: 20000,
+      timeout: 10000,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 3,
+      reconnectionDelay: 2000
     });
 
     newSocket.on('connect', () => {
       console.log('Connected to server');
       setIsConnected(true);
       isConnectedRef.current = true;
+      connectingRef.current = false;
     });
 
     newSocket.on('disconnect', () => {
       console.log('Disconnected from server');
       setIsConnected(false);
       isConnectedRef.current = false;
+      connectingRef.current = false;
     });
 
     // Room events
@@ -125,10 +132,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setRoom(updatedRoom);
     });
 
-    // Score updates - update scores when room updates
-    newSocket.on('roomUpdated', (updatedRoom: Room) => {
-      setRoom(updatedRoom);
-    });
 
     newSocket.on('quizFinished', (updatedRoom: Room) => {
       setRoom(updatedRoom);
