@@ -1,10 +1,5 @@
 {
   "env": {
     "NEXT_PUBLIC_BACKEND_URL": "https://quizz-backend-nu.vercel.app"
-  },
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
