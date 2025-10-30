@@ -77,9 +77,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       path: '/socket.io',
       autoConnect: true,
       withCredentials: true,
-      transports: ['polling', 'websocket'],
-      upgrade: true,
-      rememberUpgrade: true,
+      // Force polling-only on Vercel serverless (no WS upgrades)
+      transports: ['polling'],
+      upgrade: false,
+      rememberUpgrade: false,
       timeout: 10000,
       reconnection: true,
       reconnectionAttempts: 3,
