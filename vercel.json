@@ -1,5 +1,5 @@
 {
   "env": {
-    "NEXT_PUBLIC_BACKEND_URL": "https://quizz-backend-nu.vercel.app"
+    "NEXT_PUBLIC_BACKEND_URL": "https://quizz-backend-ckj4.onrender.com"
   }
 }
