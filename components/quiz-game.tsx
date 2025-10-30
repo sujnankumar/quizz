@@ -11,7 +11,7 @@ interface QuizGameProps {
 }
 
 export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
-  const { selectAnswer, nextQuestion } = useSocket()
+  const { selectAnswer, nextQuestion, playerSubmissions, clearSubmissions } = useSocket()
   const isAdmin = currentPlayerId === room.adminId
   const [timeLeft, setTimeLeft] = useState(30)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
@@ -215,6 +215,23 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
               ))}
             </div>
 
+            {/* Submission Log */}
+            {playerSubmissions.length > 0 && (
+              <div className="bg-gradient-to-r from-slate-800/40 to-slate-700/40 backdrop-blur-sm p-3 rounded-xl border border-slate-500/40 mb-4 shadow-inner">
+                <h4 className="text-sm text-cyan-300 font-semibold mb-2 drop-shadow-sm">Submissions</h4>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {playerSubmissions.map((name, index) => (
+                    <div key={index} className="text-sm text-gray-100 drop-shadow-sm">
+                      ✅ <span className="text-yellow-300">{name}</span> submitted answer
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs text-cyan-200 mt-2 font-medium">
+                  {playerSubmissions.length}/{room.players.length} players submitted
+                </div>
+              </div>
+            )}
+
             {hasAnswered && !showAnswerModal && (
               <div className="text-center text-cyan-200 py-3 sm:py-4 bg-slate-700/50 backdrop-blur-sm rounded-xl border border-slate-500/40 font-medium drop-shadow-md shadow-inner">
                 ✅ Submitted - Waiting for others to finish...
@@ -238,26 +255,32 @@ export function QuizGame({ room, currentPlayerId }: QuizGameProps) {
             <div className="space-y-1 sm:space-y-2">
               {[...room.players]
                 .sort((a: any, b: any) => b.score - a.score)
-                .map((player: any, index: number) => (
-                  <div
-                    key={player.id}
-                    className={`flex items-center justify-between p-2 sm:p-3 rounded-lg transition-all backdrop-blur-sm text-sm sm:text-base ${
-                      player.id === currentPlayerId
-                        ? "bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-400/60 drop-shadow-md"
-                        : "bg-slate-700/50 border border-slate-500/40"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-                      <span className="text-base sm:text-lg font-bold w-5 sm:w-6 flex-shrink-0 text-gray-100 drop-shadow-md">
-                        {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
+                .map((player: any, index: number) => {
+                  // Show actual scores only after all submit or timer ends, otherwise show 0
+                  const showActualScore = showAnswerModal || room.players.every((p: any) => p.answered);
+                  const displayScore = showActualScore ? player.score : 0;
+
+                  return (
+                    <div
+                      key={player.id}
+                      className={`flex items-center justify-between p-2 sm:p-3 rounded-lg transition-all backdrop-blur-sm text-sm sm:text-base ${
+                        player.id === currentPlayerId
+                          ? "bg-gradient-to-r from-blue-500/30 to-purple-500/30 border border-blue-400/60 drop-shadow-md"
+                          : "bg-slate-700/50 border border-slate-500/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                        <span className="text-base sm:text-lg font-bold w-5 sm:w-6 flex-shrink-0 text-gray-100 drop-shadow-md">
+                          {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
+                        </span>
+                        <span className="text-gray-100 font-medium truncate drop-shadow-sm">{player.name}</span>
+                      </div>
+                      <span className="text-lg sm:text-xl font-bold text-cyan-300 flex-shrink-0 ml-2 drop-shadow-md">
+                        {!showActualScore ? "---" : displayScore}
                       </span>
-                      <span className="text-gray-100 font-medium truncate drop-shadow-sm">{player.name}</span>
                     </div>
-                    <span className="text-lg sm:text-xl font-bold text-cyan-300 flex-shrink-0 ml-2 drop-shadow-md">
-                      {player.score}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           </Card>
         </div>

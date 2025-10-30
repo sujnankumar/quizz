@@ -15,6 +15,7 @@ interface Room {
   topic?: string
   difficulty?: string
   questionCount?: number
+  hiddenScores?: boolean // Flag to indicate if scores should be hidden
 }
 
 interface Player {
@@ -39,8 +40,10 @@ interface SocketContextType {
   room: Room | null;
   currentPlayerId: string | null;
   isConnected: boolean;
+  playerSubmissions: string[];
   connect: () => void;
   disconnect: () => void;
+  clearSubmissions: () => void;
   createRoom: (playerName: string, topic: string, difficulty: string, questionCount: number) => Promise<{room: Room, playerId: string}>;
   joinRoom: (roomCode: string, playerName: string) => void;
   startQuiz: () => void;
@@ -63,6 +66,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [playerSubmissions, setPlayerSubmissions] = useState<string[]>([]);
 
   const isConnectedRef = useRef(false);
   const socketRef = useRef<Socket | null>(null);
@@ -116,13 +120,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setRoom(updatedRoom);
     });
 
+    newSocket.on('playerSubmitted', (data: { playerId: string, playerName: string }) => {
+      setPlayerSubmissions(prev => [...prev, data.playerName]);
+    });
+
     // Quiz events
     newSocket.on('quizStarted', (updatedRoom: Room) => {
       setRoom(updatedRoom);
+      setPlayerSubmissions([]); // Clear submissions when quiz starts
     });
 
     newSocket.on('questionUpdated', (updatedRoom: Room) => {
       setRoom(updatedRoom);
+      setPlayerSubmissions([]); // Clear submissions for new question
     });
 
     newSocket.on('allAnswered', (updatedRoom: Room) => {
@@ -156,7 +166,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       isConnectedRef.current = false;
       setRoom(null);
       setCurrentPlayerId(null);
+      setPlayerSubmissions([]);
     }
+  };
+
+  const clearSubmissions = () => {
+    setPlayerSubmissions([]);
   };
 
   const createRoom = (playerName: string, topic: string, difficulty: string, questionCount: number): Promise<{room: Room, playerId: string}> => {
@@ -216,8 +231,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     room,
     currentPlayerId,
     isConnected,
+    playerSubmissions,
     connect,
     disconnect,
+    clearSubmissions,
     createRoom,
     joinRoom,
     startQuiz,
