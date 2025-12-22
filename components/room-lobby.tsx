@@ -1,4 +1,6 @@
+
 "use client"
+import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -127,71 +129,98 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                         </DialogDescription>
                       </DialogHeader>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                        <div>
-                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Topic</p>
-                          <Input
-                            value={room.topic || ""}
-                            onChange={(e) => updateSettings({ topic: e.target.value })}
-                            placeholder="Enter topic"
-                            className="bg-slate-800/60 border border-slate-600/50 text-white"
-                          />
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Difficulty</p>
-                          <select
-                            aria-label="Select difficulty"
-                            title="Select difficulty"
-                            value={(room.difficulty || "medium").toLowerCase()}
-                            onChange={(e) => updateSettings({ difficulty: e.target.value as any })}
-                            className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
-                          >
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                          </select>
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Questions</p>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={room.questionCount || 5}
-                            onChange={(e) => {
-                              const v = Math.max(1, Math.min(20, parseInt(e.target.value || "1")));
-                              updateSettings({ questionCount: v });
-                            }}
-                            className="bg-slate-800/60 border border-slate-600/50 text-white"
-                          />
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Time per Question (sec)</p>
-                          <select
-                            aria-label="Select time per question"
-                            title="Select time per question"
-                            value={room.questionTime || 30}
-                            onChange={(e) => updateSettings({ questionTime: parseInt(e.target.value) })}
-                            className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
-                          >
-                            <option value={10}>10</option>
-                            <option value={15}>15</option>
-                            <option value={20}>20</option>
-                            <option value={25}>25</option>
-                            <option value={30}>30</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-3">
-                        <Button
-                          onClick={generateQuestions}
-                          disabled={isGenerating}
-                          className="w-full sm:w-1/2 bg-gradient-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
-                        >
-                          {isGenerating ? "⏳ Generating..." : "🔁 Generate Questions"}
-                        </Button>
-                      </DialogFooter>
+                      {/* Local state for settings editing */}
+                      {(() => {
+                        const [localSettings, setLocalSettings] = React.useState({
+                          topic: room.topic || '',
+                          difficulty: (room.difficulty || 'medium').toLowerCase(),
+                          questionCount: room.questionCount || 5,
+                          questionTime: room.questionTime || 30,
+                        });
+                        const [generated, setGenerated] = React.useState(false);
+                        React.useEffect(() => {
+                          setLocalSettings({
+                            topic: room.topic || '',
+                            difficulty: (room.difficulty || 'medium').toLowerCase(),
+                            questionCount: room.questionCount || 5,
+                            questionTime: room.questionTime || 30,
+                          });
+                        }, [room.topic, room.difficulty, room.questionCount, room.questionTime]);
+                        React.useEffect(() => {
+                          if (!isGenerating && generated) setGenerated(true);
+                        }, [isGenerating]);
+                        return <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                            <div>
+                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Topic</p>
+                              <Input
+                                value={localSettings.topic}
+                                onChange={e => setLocalSettings(s => ({ ...s, topic: e.target.value }))}
+                                placeholder="Enter topic"
+                                className="bg-slate-800/60 border border-slate-600/50 text-white"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Difficulty</p>
+                              <select
+                                aria-label="Select difficulty"
+                                title="Select difficulty"
+                                value={localSettings.difficulty}
+                                onChange={e => setLocalSettings(s => ({ ...s, difficulty: e.target.value }))}
+                                className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+                              >
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                              </select>
+                            </div>
+                            <div>
+                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Questions</p>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={localSettings.questionCount}
+                                onChange={e => {
+                                  const v = Math.max(1, Math.min(20, parseInt(e.target.value || '1')));
+                                  setLocalSettings(s => ({ ...s, questionCount: v }));
+                                }}
+                                className="bg-slate-800/60 border border-slate-600/50 text-white"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Time per Question (sec)</p>
+                              <select
+                                aria-label="Select time per question"
+                                title="Select time per question"
+                                value={localSettings.questionTime}
+                                onChange={e => setLocalSettings(s => ({ ...s, questionTime: parseInt(e.target.value) }))}
+                                className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+                              >
+                                <option value={10}>10</option>
+                                <option value={15}>15</option>
+                                <option value={20}>20</option>
+                                <option value={25}>25</option>
+                                <option value={30}>30</option>
+                              </select>
+                            </div>
+                          </div>
+                          <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-3">
+                            <Button
+                              onClick={() => {
+                                updateSettings(localSettings);
+                                setGenerated(false);
+                                generateQuestions();
+                                setGenerated(true);
+                              }}
+                              disabled={isGenerating}
+                              className="w-full sm:w-1/2 bg-gradient-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
+                            >
+                              {isGenerating ? "⏳ Generating..." : generated ? "✅ OK (Generate Again)" : "🔁 Generate Questions"}
+                            </Button>
+                          </DialogFooter>
+                        </>;
+                      })()}
                     </DialogContent>
                   </Dialog>
 
