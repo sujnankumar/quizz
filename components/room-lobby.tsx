@@ -90,7 +90,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
           </Card>
 
           {/* Quiz Settings */}
-          <Card className="p-4 sm:p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-green-500/20">
+          <Card className="p-4 sm:p-6 bg-linear-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-green-500/20">
             <h2 className="text-lg sm:text-2xl font-bold text-gray-100 mb-3 sm:mb-4 flex items-center gap-2 drop-shadow-lg">
               <span className="text-2xl sm:text-3xl">⚙️</span> Quiz Settings
             </h2>
