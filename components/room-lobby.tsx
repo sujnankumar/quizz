@@ -229,7 +229,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                     {isAdmin && (
                       <div className="w-full sm:w-1/2">
                         <Button
-                          onClick={() => startQuiz()}
+                          onClick={handleStartQuiz}
                           className="w-full bg-linear-to-r from-green-500/80 via-emerald-500/80 to-cyan-500/80 hover:from-green-600/90 hover:via-emerald-600/90 hover:to-cyan-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-green-500/30 disabled:opacity-60"
                           disabled={!room.questionsReady || isGenerating || (room.rematch && !allReady)}
                         >
