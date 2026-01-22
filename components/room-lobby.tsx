@@ -37,21 +37,21 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-6 sm:py-8 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 opacity-90"></div>
+      <div className="absolute inset-0 bg-linear-to-br from-indigo-900 via-purple-900 to-blue-900 opacity-90"></div>
       <div className="absolute top-0 left-0 w-48 sm:w-96 h-48 sm:h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
       <div className="absolute bottom-0 right-0 w-48 sm:w-96 h-48 sm:h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
 
       <div className="w-full max-w-5xl relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Room Info */}
-          <Card className="p-4 sm:p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-purple-500/20">
+          <Card className="p-4 sm:p-6 bg-linear-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-purple-500/20">
             <h2 className="text-lg sm:text-2xl font-bold text-gray-100 mb-3 sm:mb-4 flex items-center gap-2 drop-shadow-lg">
               <span className="text-2xl sm:text-3xl">🏠</span> Room Info
             </h2>
             <div className="space-y-3 sm:space-y-4">
               <div>
                 <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm">Room Code</p>
-                <p className="text-2xl sm:text-3xl font-bold text-transparent bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text drop-shadow-lg">
+                <p className="text-2xl sm:text-3xl font-bold text-transparent bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text drop-shadow-lg">
                   {room.code}
                 </p>
               </div>
@@ -63,7 +63,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
           </Card>
 
           {/* Players List */}
-          <Card className="p-4 sm:p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-blue-500/20">
+          <Card className="p-4 sm:p-6 bg-linear-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-blue-500/20">
             <h2 className="text-lg sm:text-2xl font-bold text-gray-100 mb-3 sm:mb-4 flex items-center gap-2 drop-shadow-lg">
               <span className="text-2xl sm:text-3xl">👥</span> Players
             </h2>
@@ -80,7 +80,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-600/70 text-white ml-2">Not ready</span>
                   )}
                   {player.id === room.adminId && (
-                    <span className="text-xs bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2 shadow-lg">
+                    <span className="text-xs bg-linear-to-r from-yellow-400 to-orange-400 text-white px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2 shadow-lg">
                       👑 Admin
                     </span>
                   )}
@@ -214,7 +214,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                                 setGenerated(true);
                               }}
                               disabled={isGenerating}
-                              className="w-full sm:w-1/2 bg-gradient-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
+                              className="w-full sm:w-1/2 bg-linear-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
                             >
                               {isGenerating ? "⏳ Generating..." : generated ? "✅ OK (Generate Again)" : "🔁 Generate Questions"}
                             </Button>
@@ -230,7 +230,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                       <div className="w-full sm:w-1/2">
                         <Button
                           onClick={() => startQuiz()}
-                          className="w-full bg-gradient-to-r from-green-500/80 via-emerald-500/80 to-cyan-500/80 hover:from-green-600/90 hover:via-emerald-600/90 hover:to-cyan-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-green-500/30 disabled:opacity-60"
+                          className="w-full bg-linear-to-r from-green-500/80 via-emerald-500/80 to-cyan-500/80 hover:from-green-600/90 hover:via-emerald-600/90 hover:to-cyan-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-green-500/30 disabled:opacity-60"
                           disabled={!room.questionsReady || isGenerating || (room.rematch && !allReady)}
                         >
                           🚀 Start Quiz
@@ -243,7 +243,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                           leaveRoom()
                           router.push("/")
                         }}
-                        className="w-full bg-gradient-to-r from-red-500/80 to-pink-600/80 hover:from-red-600/90 hover:to-pink-700/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg"
+                        className="w-full bg-linear-to-r from-red-500/80 to-pink-600/80 hover:from-red-600/90 hover:to-pink-700/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg"
                       >
                         🚪 Exit Room
                       </Button>
@@ -278,7 +278,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
           </Card>
 
           {!isAdmin && (
-            <Card className="p-4 sm:p-6 bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-purple-500/20 md:col-span-2 lg:col-span-1 flex items-center justify-center">
+            <Card className="p-4 sm:p-6 bg-linear-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 shadow-2xl rounded-xl sm:rounded-2xl shadow-purple-500/20 md:col-span-2 lg:col-span-1 flex items-center justify-center">
               <div className="text-center">
                 <p className="text-cyan-200 mb-4 text-sm sm:text-lg font-medium drop-shadow-md">
                   ⏳ Waiting for admin to start the quiz...
