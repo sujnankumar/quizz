@@ -30,10 +30,24 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
   const readyCount = room.players.filter((p: any) => p.ready).length
   const allReady = readyCount === room.players.length
   const inRematch = !!room.rematch
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false)
 
   const handleStartQuiz = () => {
     startQuiz()
   }
+
+  const questionStatusIndicator = React.useMemo(() => {
+    if (isGenerating) {
+      return <span className="text-yellow-400">Generating...</span>;
+    }
+    if (room.questionsReady) {
+      return <span className="text-green-400">Questions ready</span>;
+    }
+    if (room.generationFailed) {
+      return <span className="text-red-400">Generation failed</span>;
+    }
+    return <span className="text-cyan-300">Questions not ready</span>;
+  }, [room.questionsReady, isGenerating, room.generationFailed]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-6 sm:py-8 relative overflow-hidden">
@@ -97,7 +111,7 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
             <div className="space-y-3 sm:space-y-4">
               <div>
                 <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm">Topic</p>
-                <p className="text-base sm:text-lg font-semibold text-gray-100 capitalize drop-shadow-md">{room.topic || 'Science'}</p>
+                <p className="text-base sm:text-lg font-semibold text-gray-100 capitalize drop-shadow-md">{room.topic || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm">Difficulty</p>
@@ -110,119 +124,15 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
 
               {isAdmin ? (
                 <div className="space-y-3 sm:space-y-4">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="secondary"
-                        className="w-full bg-slate-800/60 hover:bg-slate-700/70 border border-slate-600/50 text-white"
-                        aria-label="Open quiz settings"
-                        title="Open quiz settings"
-                      >
-                        ⚙️ Open Settings
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-xl bg-slate-900/95 border border-slate-700/60">
-                      <DialogHeader>
-                        <DialogTitle className="text-gray-100">Quiz Settings</DialogTitle>
-                        <DialogDescription className="text-cyan-300">
-                          Edit settings, generate questions, then start the quiz.
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      {/* Local state for settings editing */}
-                      {(() => {
-                        const [localSettings, setLocalSettings] = React.useState({
-                          topic: room.topic || '',
-                          difficulty: (room.difficulty || 'medium').toLowerCase(),
-                          questionCount: room.questionCount || 5,
-                          questionTime: room.questionTime || 30,
-                        });
-                        const [generated, setGenerated] = React.useState(false);
-                        React.useEffect(() => {
-                          setLocalSettings({
-                            topic: room.topic || '',
-                            difficulty: (room.difficulty || 'medium').toLowerCase(),
-                            questionCount: room.questionCount || 5,
-                            questionTime: room.questionTime || 30,
-                          });
-                        }, [room.topic, room.difficulty, room.questionCount, room.questionTime]);
-                        React.useEffect(() => {
-                          if (!isGenerating && generated) setGenerated(true);
-                        }, [isGenerating]);
-                        return <>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                            <div>
-                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Topic</p>
-                              <Input
-                                value={localSettings.topic}
-                                onChange={e => setLocalSettings(s => ({ ...s, topic: e.target.value }))}
-                                placeholder="Enter topic"
-                                className="bg-slate-800/60 border border-slate-600/50 text-white"
-                              />
-                            </div>
-                            <div>
-                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Difficulty</p>
-                              <select
-                                aria-label="Select difficulty"
-                                title="Select difficulty"
-                                value={localSettings.difficulty}
-                                onChange={e => setLocalSettings(s => ({ ...s, difficulty: e.target.value }))}
-                                className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
-                              >
-                                <option value="easy">Easy</option>
-                                <option value="medium">Medium</option>
-                                <option value="hard">Hard</option>
-                              </select>
-                            </div>
-                            <div>
-                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Questions</p>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={20}
-                                value={localSettings.questionCount}
-                                onChange={e => {
-                                  const v = Math.max(1, Math.min(20, parseInt(e.target.value || '1')));
-                                  setLocalSettings(s => ({ ...s, questionCount: v }));
-                                }}
-                                className="bg-slate-800/60 border border-slate-600/50 text-white"
-                              />
-                            </div>
-                            <div>
-                              <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Time per Question (sec)</p>
-                              <select
-                                aria-label="Select time per question"
-                                title="Select time per question"
-                                value={localSettings.questionTime}
-                                onChange={e => setLocalSettings(s => ({ ...s, questionTime: parseInt(e.target.value) }))}
-                                className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
-                              >
-                                <option value={10}>10</option>
-                                <option value={15}>15</option>
-                                <option value={20}>20</option>
-                                <option value={25}>25</option>
-                                <option value={30}>30</option>
-                              </select>
-                            </div>
-                          </div>
-                          <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-3">
-                            <Button
-                              onClick={() => {
-                                updateSettings(localSettings);
-                                setGenerated(false);
-                                generateQuestions();
-                                setGenerated(true);
-                              }}
-                              disabled={isGenerating}
-                              className="w-full sm:w-1/2 bg-linear-to-r from-yellow-500/80 via-orange-500/80 to-red-500/80 hover:from-yellow-600/90 hover:via-orange-600/90 hover:to-red-600/90 text-white py-3 font-semibold backdrop-blur-sm border border-white/30 shadow-lg shadow-yellow-500/30"
-                            >
-                              {isGenerating ? "⏳ Generating..." : generated ? "✅ OK (Generate Again)" : "🔁 Generate Questions"}
-                            </Button>
-                          </DialogFooter>
-                        </>;
-                      })()}
-                    </DialogContent>
-                  </Dialog>
+                  <SettingsDialog
+                    isOpen={isSettingsOpen}
+                    onOpenChange={setIsSettingsOpen}
+                    room={room}
+                    isGenerating={isGenerating}
+                    updateSettings={updateSettings}
+                    generateQuestions={generateQuestions}
+                    questionStatusIndicator={questionStatusIndicator}
+                  />
 
                   {/* Actions outside modal */}
                   <div className="flex flex-col sm:flex-row gap-3 mt-3">
@@ -235,8 +145,8 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                         >
                           🚀 Start Quiz
                         </Button>
-              </div>
-            )}
+                      </div>
+                    )}
                     <div className={`${isAdmin ? "w-full sm:w-1/2" : "w-full"}`}>
                       <Button
                         onClick={() => {
@@ -264,8 +174,8 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
                     </div>
                   )}
                   {isAdmin && (
-                    <div className="mt-1 text-xs text-cyan-300">
-                      {(room.questionsReady ? "Questions ready" : "Questions not ready")} · Ready {readyCount}/{room.players.length}{inRematch ? " (rematch)" : ""}
+                    <div className="mt-1 text-xs">
+                      {questionStatusIndicator} · Ready {readyCount}/{room.players.length}{inRematch ? " (rematch)" : ""}
                     </div>
                   )}
                 </div>
@@ -295,4 +205,160 @@ export function RoomLobby({ room, currentPlayerId }: RoomLobbyProps) {
       </div>
     </div>
   )
+}
+
+
+interface SettingsDialogProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  room: any;
+  isGenerating: boolean;
+  updateSettings: (settings: any) => void;
+  generateQuestions: () => void;
+  questionStatusIndicator: React.ReactNode;
+}
+
+function SettingsDialog({ isOpen, onOpenChange, room, isGenerating, updateSettings, generateQuestions, questionStatusIndicator }: SettingsDialogProps) {
+  const [localSettings, setLocalSettings] = React.useState({
+    topic: room.topic || '',
+    difficulty: (room.difficulty || 'medium').toLowerCase(),
+    questionCount: room.questionCount || 5,
+    questionTime: room.questionTime || 30,
+  });
+
+  React.useEffect(() => {
+    setLocalSettings({
+      topic: room.topic || '',
+      difficulty: (room.difficulty || 'medium').toLowerCase(),
+      questionCount: room.questionCount || 5,
+      questionTime: room.questionTime || 30,
+    });
+  }, [room.topic, room.difficulty, room.questionCount, room.questionTime]);
+
+  const topicChanged = localSettings.topic !== room.topic;
+
+  const handleGenerate = () => {
+    updateSettings(localSettings);
+    generateQuestions();
+  };
+
+  const handleSaveChanges = () => {
+    updateSettings(localSettings);
+    onOpenChange(false);
+  }
+
+  const renderButton = () => {
+    if (isGenerating) {
+      return (
+        <Button disabled className="w-full sm:w-auto bg-yellow-500/80 text-white">
+          ⏳ Generating...
+        </Button>
+      );
+    }
+
+    if (room.questionsReady && !topicChanged) {
+      return (
+        <Button onClick={handleSaveChanges} className="w-full sm:w-auto bg-green-500/80 text-white">
+          ✅ OK
+        </Button>
+      );
+    }
+
+    if (room.questionsReady && topicChanged) {
+      return (
+        <Button onClick={handleGenerate} className="w-full sm:w-auto bg-orange-500/80 text-white">
+          🔁 Generate Again
+        </Button>
+      );
+    }
+
+    return (
+      <Button onClick={handleGenerate} disabled={!localSettings.topic} className="w-full sm:w-auto bg-cyan-500/80 text-white">
+        🔁 Generate Questions
+      </Button>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <Button
+          variant="secondary"
+          className="w-full bg-slate-800/60 hover:bg-slate-700/70 border border-slate-600/50 text-white"
+          aria-label="Open quiz settings"
+          title="Open quiz settings"
+        >
+          ⚙️ Open Settings
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl bg-slate-900/95 border border-slate-700/60">
+        <DialogHeader>
+          <DialogTitle className="text-gray-100">Quiz Settings</DialogTitle>
+          <DialogDescription className="text-cyan-300">
+            Edit settings, generate questions, then start the quiz.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+          <div>
+            <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Topic</p>
+            <Input
+              value={localSettings.topic}
+              onChange={e => setLocalSettings(s => ({ ...s, topic: e.target.value }))}
+              placeholder="Enter topic (e.g., 'space exploration')"
+              className="bg-slate-800/60 border border-slate-600/50 text-white"
+            />
+          </div>
+          <div>
+            <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Difficulty</p>
+            <select
+              aria-label="Select difficulty"
+              title="Select difficulty"
+              value={localSettings.difficulty}
+              onChange={e => setLocalSettings(s => ({ ...s, difficulty: e.target.value }))}
+              className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div>
+            <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Number of Questions</p>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={localSettings.questionCount}
+              onChange={e => {
+                const v = Math.max(1, Math.min(20, parseInt(e.target.value || '1')));
+                setLocalSettings(s => ({ ...s, questionCount: v }));
+              }}
+              className="bg-slate-800/60 border border-slate-600/50 text-white"
+            />
+          </div>
+          <div>
+            <p className="text-xs sm:text-sm text-cyan-300 drop-shadow-sm mb-2">Time per Question (sec)</p>
+            <select
+              aria-label="Select time per question"
+              title="Select time per question"
+              value={localSettings.questionTime}
+              onChange={e => setLocalSettings(s => ({ ...s, questionTime: parseInt(e.target.value) }))}
+              className="w-full p-3 bg-slate-800/60 border border-slate-600/50 text-white rounded-md"
+            >
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={20}>20</option>
+              <option value={25}>25</option>
+              <option value={30}>30</option>
+            </select>
+          </div>
+        </div>
+        <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="text-xs">{questionStatusIndicator}</div>
+          {renderButton()}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
